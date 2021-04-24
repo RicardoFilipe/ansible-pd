@@ -1,0 +1,19 @@
+---
+
+- name: Get environment variables
+  hosts: frontend_machine
+  tasks:
+     - name: Print all available facts
+       ansible.builtin.debug:
+         var: ansible_facts
+
+     - name: Check uptime machine
+       shell: uptime
+       register: result
+
+     - debug: var=result       
+
+     - name: get file from remote server
+       fetch:
+          src: /var/log/syslog
+          dest: /tmp/

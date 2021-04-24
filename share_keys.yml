@@ -1,0 +1,48 @@
+---
+
+- name: Share keys
+  hosts: frontend_machine
+  tasks:
+     - name: Validate public key exists..
+       local_action: stat path=~/.ssh/id_rsa.pub
+       run_once: true
+       register: public_key_result
+
+     - name: Create public key, if necessary..
+       local_action: command ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+       run_once: true
+       when: not public_key_result.stat.exists
+
+     - name: Make sure the known hosts file exists..
+       local_action: file path=~/.ssh/known_hosts state=touch force=no
+       run_once: true
+       register: hosts_file_result
+       changed_when: "hosts_file_result.size == 0"
+
+     - name: Check host name availability in know_hosts..
+       local_action: shell ssh-keygen -f ~/.ssh/known_hosts -F {{ ansible_ssh_host }}
+       register: ssh_known_host_results
+       changed_when: false
+       ignore_errors: yes
+
+     - name: Add host, only if not yet available
+       local_action: shell ssh-keyscan -H {{ ansible_ssh_host }} >> ~/.ssh/known_hosts
+       when: ssh_known_host_results is defined and ssh_known_host_results.stdout == ""
+
+     - name: Test remote host, to ensure everything is okay..
+       command: echo "teste"
+       ignore_errors: yes
+       register: echo_result
+       changed_when: false
+
+     - name: Install phyton at remote host, if not installed
+       raw: yum -y install python-simplejson
+       when: "echo_result is failed and ('Error: ansible requires a json module, none found' in echo_result.msg or 'Error: ansible requires the stdlib json or simplejson module, neither was found' in echo_result.msg)"
+       become: yes
+
+     - name: Add RSA key to the remote host
+       authorized_key: user='{{ ansible_ssh_user }}' key="{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+     - name: Test again destiny, to ensure everything is okay..
+       command: echo "teste"
+       changed_when: False
