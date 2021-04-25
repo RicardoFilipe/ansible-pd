@@ -1,0 +1,70 @@
+---
+- hosts: frontend_machine
+  become: true
+
+
+  vars:
+    host_port: "8080"
+    container_port: "80"
+
+  tasks:
+    - name: install certain python modules for docker
+      pip:
+        name: "{{ item.name }}"
+        state: "{{ item.state}}"
+      with_items:
+        - { name: docker, version: 2.0.0 , state: "absent"}
+        - { name: docker-py, version: 1.10.6 , state: "present"}
+      throttle: 1
+
+ #   - name: Install docker python package
+ #     pip: name=docker-py state=present 
+
+    - name: Generate template
+      template: 
+        src: template_nginx.html.j2
+        dest: ~/file_{{inventory_hostname}}.html
+
+    - name: Stop any container running
+      docker_container:
+        name: nginx_{{inventory_hostname}}
+        state: absent
+#      throttle: 1      
+
+    - name: Install and run nginx
+      shell: docker container run -d --publish "{{8080 + groups['frontend_machine'].index(inventory_hostname)}}:{{container_port}}"  -v ~/file_{{inventory_hostname}}.html:/usr/share/nginx/html/index.html --name nginx_{{inventory_hostname}} nginx:latest
+      
+
+#      docker_container:
+#        name: nginx_{{ansible_hostname}}
+#        image: nginx:latest
+#        ports:
+#         - "{{host_port}}:{{container_port}}"
+#        recreate: yes
+#        state: started  
+#        mounts:
+#          - source: ~/file.html
+#            target: /usr/share/nginx/html/index.html 
+
+#####################
+# 2 part of the LB exercise
+#####################
+
+  - hosts: frontend_loadbalancer
+    become: true
+
+    - name: Generate template for load balancer
+      template: 
+        src: template_nginx.lb.j2
+        dest: ~/file_{{inventory_hostname}}.lb
+
+    - name: Stop any LB container running
+      docker_container:
+        name: nginx_{{inventory_hostname}}
+        state: absent
+#      throttle: 1      
+
+    - name: Install and run nginx
+      shell: docker container run -d --publish "{{8090 + groups['frontend_loadbalancer'].index(inventory_hostname)}}:{{container_port}}"  -v ~/file_{{inventory_hostname}}.lb:/etc/nginx/conf.d/default.conf:rw --name nginx_{{inventory_hostname}} nginx:latest
+      
+

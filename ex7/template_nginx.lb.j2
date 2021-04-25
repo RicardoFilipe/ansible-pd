@@ -1,0 +1,14 @@
+upstream lb {
+        {% for host in groups.frontend_machine  %}
+		server 172.17.0.1:{{8080 + groups['host'].index(inventory_hostname)}} weight=1;
+		{% endfor %}
+    }
+
+
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://lb;
+        }
+    }
+

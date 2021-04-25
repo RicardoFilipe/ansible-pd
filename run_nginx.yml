@@ -1,0 +1,34 @@
+---
+- hosts: frontend_machine
+  become: true
+
+  vars:
+    host_port: "8080"
+    container_port: "80"
+
+  tasks:
+    - name: Install docker python package
+      pip: name=docker-py state=present
+
+    - name: Install and run nginx
+      docker_container:
+        name: nginx_{{ansible_hostname}}
+        image: nginx:latest
+        ports:
+         - "{{host_port}}:{{container_port}}"
+        recreate: yes
+        state: started       
+   
+    - name: Check container is up
+      wait_for:
+        port: "{{host_port}}"
+        delay: 10
+
+
+    - name: Check that a page returns a status 200 and fail if the phrase Welcome to nginx  is not in the page contents
+      uri:
+        url: http://{{ansible_ssh_host}}:{{host_port}}
+        return_content: yes
+      register: result
+      failed_when: "'Welcome to nginx' not in result.content"
+
