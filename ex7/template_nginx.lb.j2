@@ -1,6 +1,7 @@
 upstream lb {
         {% for host in groups.frontend_machine  %}
-		server 172.17.0.1:{{8080 + groups['host'].index(inventory_hostname)}} weight=1;
+		#server 172.17.0.1:{{8080 + groups['host'].index(inventory_hostname)}} weight=1;
+		server 172.17.0.1:{{8080 + loop.index }} weight=1;
 		{% endfor %}
     }
 
