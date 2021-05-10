@@ -53,18 +53,19 @@
 - hosts: frontend_loadbalancer
   become: true
 
-  - name: Generate template for load balancer
-    template: 
-      src: template_nginx.lb.j2
-      dest: ~/file_{{inventory_hostname}}.lb
+  tasks:
+    - name: Generate template for load balancer
+      template: 
+        src: template_nginx.lb.j2
+        dest: ~/file_{{inventory_hostname}}.lb
 
-  - name: Stop any LB container running
-    docker_container:
-      name: nginx_{{inventory_hostname}}
-      state: absent
-#      throttle: 1      
+    - name: Stop any LB container running
+      docker_container:
+        name: nginx_{{inventory_hostname}}
+        state: absent
+  #      throttle: 1      
 
-  - name: Install and run nginx
-    shell: docker container run -d --publish "{{8090 + groups['frontend_loadbalancer'].index(inventory_hostname)}}:{{container_port}}"  -v ~/file_{{inventory_hostname}}.lb:/etc/nginx/conf.d/default.conf:rw --name nginx_{{inventory_hostname}} nginx:latest
+    - name: Install and run nginx
+      shell: docker container run -d --publish "{{8090 + groups['frontend_loadbalancer'].index(inventory_hostname)}}:{{container_port}}"  -v ~/file_{{inventory_hostname}}.lb:/etc/nginx/conf.d/default.conf:rw --name nginx_{{inventory_hostname}} nginx:latest
 
 
